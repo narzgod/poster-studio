@@ -53,8 +53,9 @@ const cl=(v,a,b)=>Math.min(b,Math.max(a,v));
 const TYPES={bars:'Garis miring',slab:'Blok miring',pillar:'Pilar vertikal',jog:'Garis putih lurus + tekukan',split:'Garis putih lurus putus',diag:'Pita diagonal lebar',diag2:'Pita diagonal tipis',shade:'Gradasi gelap searah',chev:'Chevron',dots:'Titik halftone halus',check:'Kotak catur',ring:'Lingkaran',speed:'Garis kecepatan',streak:'Garis kecepatan memudar',glow:'Cahaya',vignette:'Vinyet gelap tepi',grid:'Grid tipis'};
 const LY=(type,c,o,s,r,x,y)=>({id:uid(),type,c,hex:'#ffffff',d:1,o,s,r,x:x||0,y:y||0});
 const TL=(pos,sz)=>({pos,ox:0,oy:0,sz,m:50});
-const PI=o=>Object.assign({text:'',f:'MGText',f2:'MGText',z:40,sp:0,col:'#ffffff',gap:12,pos:'bc',al:'c',ox:0,oy:0,m:60},o);
-const winnerD=()=>({txt:{name:'Driver 1',head:'WINNER',sub:'ROUND 01 // TRACK',nf:'MGText',hf:'MGDisplay',sf:'MGBold',nc:'#ffffff',hc:'#ffffff',sc:'#ffffff',nz:36,hz:190,sz:34,nsp:8,hsp:0,ssp:6,gap:22,m:60,pos:'bc',ox:0,oy:0},
+const SH=(st)=>({st:st||'soft',k:100,d:100,col:'#000000'});
+const PI=o=>Object.assign({text:'',f:'MGText',f2:'MGText',z:40,sp:0,col:'#ffffff',gap:12,pos:'bc',al:'c',ox:0,oy:0,m:60,sh:SH('soft')},o);
+const winnerD=()=>({txt:{name:'Driver 1',head:'WINNER',sub:'ROUND 01 // TRACK',nf:'MGText',hf:'MGDisplay',sf:'MGBold',nc:'#ffffff',hc:'#ffffff',sc:'#ffffff',nz:36,hz:190,sz:34,nsp:8,hsp:0,ssp:6,gap:22,m:60,pos:'bc',ox:0,oy:0,sh:SH('none')},
  bg:{mode:'team',a:'#a50f24',b:'#2b3138'},fade:'#000000',fs:100,ph:{s:1,x:0,y:0},
  layers:[LY('bars',4,.3,1,-20),LY('slab',2,.28,1,-20),LY('dots',4,.45,1,0)],logos:[],tl:TL('tc',100)});
 const poleD=()=>({pt:{
@@ -171,6 +172,15 @@ function layer(c,l,col){c.save();c.translate(W/2+(l.x||0),H/2+(l.y||0));c.rotate
 function setF(c,f,size,sp){c.font=`${size}px "${f}"`;c.letterSpacing=sp+'px'}
 function anchor(pos,w,h,m,ox,oy){const x=pos[1]=='l'?m:pos[1]=='r'?W-m-w:(W-w)/2,y=pos[0]=='t'?m:pos[0]=='b'?H-m-h:(H-h)/2;return{x:x+ox,y:y+oy,w,h}}
 function teamBox(){const lg=img(T().logo);if(!lg)return null;const tl=Q().tl,k=tl.sz/100,r=Math.min(300*k/lg.naturalWidth,110*k/lg.naturalHeight);return anchor(tl.pos,lg.naturalWidth*r,lg.naturalHeight*r,tl.m,tl.ox,tl.oy)}
+// ---- bayangan teks ----
+function shText(c,s,x,y,z,sh){
+ if(!sh||sh.st=='none'||!(sh.k>0))return;
+ const K=(c.getTransform?c.getTransform().a:1)||1,dd=(sh.d==null?100:sh.d)/100,col=nh(sh.col)||'#000000',reps=sh.k>100?2:1,f=sh.k>100?1:sh.k/100,far=6000;
+ const pass=(bl,ox,oy,al)=>{c.save();c.shadowColor=rgba(col,Math.min(1,al*f));c.shadowBlur=bl*K;c.shadowOffsetX=(far+ox)*K;c.shadowOffsetY=oy*K;c.fillStyle='#000';for(let i=0;i<reps;i++)c.fillText(s,x-far,y);c.restore()};
+ if(sh.st=='soft'){pass(z*.16,0,z*.04*dd,.55);pass(z*.06,0,z*.018*dd,.55);pass(z*.015,0,z*.007*dd,.6)}
+ else if(sh.st=='deep'){pass(z*.07,z*.045*dd,z*.06*dd,.75);pass(z*.02,z*.012*dd,z*.016*dd,.8)}
+ else if(sh.st=='halo'){pass(z*.2,0,0,.75);pass(z*.08,0,0,.75);pass(z*.025,0,0,.6)}
+ else if(sh.st=='extrude'){const n=Math.max(1,Math.round(z*.05*dd));c.save();c.fillStyle=col;for(let i=n;i>=1;i--)c.fillText(s,x+i*.7071,y+i*.7071);c.restore();pass(z*.1,n*.7071,n*.7071+z*.02,.5)}}
 // ---- teks WINNER ----
 function layoutText(c){const x=Q().txt,m=x.m,maxW=W-2*m;
  const defs=[[x.name,x.nf,x.nz,x.nsp,x.nc],[x.head,x.hf,x.hz,x.hsp,x.hc],[x.sub,x.sf,x.sz,x.ssp,x.sc]].filter(a=>String(a[0]).trim());
@@ -184,7 +194,7 @@ function layoutText(c){const x=Q().txt,m=x.m,maxW=W-2*m;
  return{L,ax,h,box:{x:h=='l'?ax:h=='r'?ax-bw:ax-bw/2,y:top,w:bw,h:hb}}}
 function drawWinner(c){const o=layoutText(c);if(!o)return;
  c.textBaseline='alphabetic';c.textAlign=o.h=='l'?'left':o.h=='r'?'right':'center';
- o.L.forEach(l=>{setF(c,l.f,l.z,l.sp);c.fillStyle=l.col;c.fillText(l.s,o.ax+(o.h=='l'?0:o.h=='r'?l.sp:l.sp/2),l.y)});c.letterSpacing='0px';c.textAlign='left'}
+ o.L.forEach(l=>{setF(c,l.f,l.z,l.sp);const px=o.ax+(o.h=='l'?0:o.h=='r'?l.sp:l.sp/2);shText(c,l.s,px,l.y,l.z,Q().txt.sh);c.fillStyle=l.col;c.fillText(l.s,px,l.y)});c.letterSpacing='0px';c.textAlign='left'}
 // ---- teks POLE ----
 function poleLayout(c){const out=[],Z=Q();
  for(const k of ['head','name','info']){const it=Z.pt[k];
@@ -206,7 +216,7 @@ function drawFlag(c,fl,x,y,w,h){const im=img(fl.id?flagSrc(fl.id):fl.src),Z={fla
 function drawPole(c){c.textBaseline='alphabetic';c.textAlign='left';
  poleLayout(c).forEach(o=>{o.lines.forEach((s,i)=>{setF(c,o.fn(i),o.z,o.sp);c.fillStyle=o.it.col;const al=o.it.al,lw=o.ws[i];
   const lx=al=='l'?o.x0:al=='r'?o.x0+o.bw-lw:o.x0+(o.bw-lw)/2,by=o.y0+o.ch*(i+1)+o.it.gap*i,isF=o.fl&&i==o.fl.li;
-  c.fillText(s,lx+(isF?o.fg.ex:0),by);
+  shText(c,s,lx+(isF?o.fg.ex:0),by,o.z,o.it.sh);c.fillStyle=o.it.col;c.fillText(s,lx+(isF?o.fg.ex:0),by);
   if(isF)drawFlag(c,o.fl,lx,by-o.ch/2-o.fg.fh/2,o.fg.fw,o.fg.fh)})});
  c.letterSpacing='0px'}
 // ---- gambar poster ----
@@ -260,6 +270,8 @@ $('#tabs').innerHTML=tabs.map((n,i)=>`<button data-act="tab" data-i="${i}">${n}<
 const opts=(arr,sel)=>arr.map(([v,l])=>`<option value="${esc(v)}" ${v==sel?'selected':''}>${esc(l)}</option>`).join('');
 const rng=(lab,attr,v,mn,mx,st)=>`<label>${lab}</label><input type="range" ${attr} min="${mn}" max="${mx}" step="${st||1}" value="${v}">`;
 const cf=(a,v)=>`<div class="cf"><input type="color" ${a} value="${v}"><input type="text" class="hx" ${a} data-hx="1" maxlength="7" autocapitalize="off" autocomplete="off" spellcheck="false" value="${v}"></div>`;
+const SHOPT=[['soft','Halus (disarankan)'],['deep','Tebal'],['extrude','3D menyatu'],['halo','Cahaya gelap sekeliling'],['none','Tanpa bayangan']];
+const shUI=(pre,sh)=>`<label>Gaya bayangan</label><select data-b="${pre}.st" data-r="1">${opts(SHOPT,sh.st)}</select>${sh.st!='none'?rng('Kekuatan',`data-b="${pre}.k"`,sh.k,0,150)+rng('Jarak bayangan',`data-b="${pre}.d"`,sh.d,0,250)+'<label>Warna bayangan</label>'+cf(`data-b="${pre}.col"`,sh.col):''}`;
 const lat=(l,f)=>`data-l="logos" data-id="${l.id}" data-f="${f}"`;
 const POS6=[['tl','Kiri atas'],['tc','Tengah atas'],['tr','Kanan atas'],['bl','Kiri bawah'],['bc','Tengah bawah'],['br','Kanan bawah']];
 const POS9=[['tl','Kiri atas'],['tc','Tengah atas'],['tr','Kanan atas'],['ml','Kiri tengah'],['mc','Tengah'],['mr','Kanan tengah'],['bl','Kiri bawah'],['bc','Tengah bawah'],['br','Kanan bawah']];
@@ -304,7 +316,8 @@ const dpad=k=>`<div class="dp"><span></span><button data-dp="${k}" data-dx="0" d
  <div class="card"><h3>Font</h3>${fsel('nf','Font nama')}${fsel('hf','Font judul')}${fsel('sf','Font teks bawah')}
  <label>Tambah font sendiri (.ttf atau .otf)</label><input type="file" accept=".ttf,.otf,.woff,.woff2" data-act="font">${fontNote}</div>
  <div class="card"><h3>Warna teks</h3>
- <label>Nama</label>${cf('data-b="txt.nc"',x.nc)}<label>Judul besar</label>${cf('data-b="txt.hc"',x.hc)}<label>Teks bawah</label>${cf('data-b="txt.sc"',x.sc)}</div>`};
+ <label>Nama</label>${cf('data-b="txt.nc"',x.nc)}<label>Judul besar</label>${cf('data-b="txt.hc"',x.hc)}<label>Teks bawah</label>${cf('data-b="txt.sc"',x.sc)}</div>
+ <div class="card"><h3>Bayangan teks</h3>${shUI('txt.sh',x.sh)}</div>`};
  const pit=(k,title,multi)=>{const it=Z.pt[k],pa=(f,lab,mn,mx,st)=>rng(lab,`data-b="pt.${k}.${f}"`,it[f],mn,mx,st);
   return `<div class="card"><div class="row" style="justify-content:space-between"><h3>${title}</h3><button class="btn ${selTx==k?'sel':''}" data-act="seltx" data-k="${k}">${selTx==k?'Sedang digeser':'Pilih untuk digeser'}</button></div>
   <label>Pindah cepat</label>${pgrid(POS9,it.pos,'ptpos','data-k="'+k+'"')}
@@ -313,7 +326,8 @@ const dpad=k=>`<div class="dp"><span></span><button data-dp="${k}" data-dx="0" d
   <label>Rata teks</label><select data-b="pt.${k}.al">${opts([['l','Kiri'],['c','Tengah'],['r','Kanan']],it.al)}</select>
   <label>Font${multi?' baris pertama':''}</label><select data-b="pt.${k}.f">${opts(fo,it.f)}</select>
   ${multi?`<label>Font baris berikutnya</label><select data-b="pt.${k}.f2">${opts(fo,it.f2)}</select>`:''}
-  <label>Warna</label>${cf(`data-b="pt.${k}.col"`,it.col)}</div>`};
+  <label>Warna</label>${cf(`data-b="pt.${k}.col"`,it.col)}
+  ${shUI('pt.'+k+'.sh',it.sh)}</div>`};
  const flagCard=()=>{const f=Z.flag,il=String(Z.pt.info.text).split('\n').map(s=>s.trim()).filter(Boolean),det=il.map(matchCountry).find(Boolean);
   const fo2=[['auto','Otomatis (dari nama negara di info ronde)'],['none','Tanpa bendera'],...Object.keys(FLAGS).sort((a,b)=>FLAGS[a].label.localeCompare(FLAGS[b].label)).map(id=>[id,FLAGS[id].label]),['custom','Bendera sendiri (unggahan)']];
   return `<div class="card"><h3>Bendera negara</h3><label>Bendera</label><select data-b="flag.mode" data-r="1">${opts(fo2,f.mode)}</select>
